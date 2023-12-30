@@ -1,82 +1,86 @@
-import { Universe, Cell } from "four-in-a-row";
+import { Board, Square } from "four-in-a-row";
 import { memory } from "four-in-a-row/four_in_a_row_bg";
 
-const CELL_SIZE = 5; // px
-const GRID_COLOR = "#CCCCCC";
-const DEAD_COLOR = "#FFFFFF";
-const ALIVE_COLOR = "#000000";
+const SQUARE_SIZE = 50; // px
+const PIECE_RADIUS = SQUARE_SIZE / 2.3;
 
-// Construct the universe, and get its width and height.
-const universe = Universe.new();
-const width = universe.width();
-const height = universe.height();
+const GRID_COLOR = "#bbbbbb";
+const P1_COLOR = "#6699ff"
+const P2_COLOR = "#ff4d4d"
 
-// Give the canvas room for all of our cells and a 1px border
-// around each of them.
-const canvas = document.getElementById("game-of-life-canvas");
-canvas.height = (CELL_SIZE + 1) * height + 1;
-canvas.width = (CELL_SIZE + 1) * width + 1;
+let board = Board.new();
+const BOARD_WIDTH = board.width();
+const BOARD_HEIGHT = board.height();
 
+const canvas = document.getElementById("board-canvas");
+canvas.width = (SQUARE_SIZE + 1) * BOARD_WIDTH + 1;
+canvas.height = (SQUARE_SIZE + 1) * BOARD_HEIGHT + 1;
 const ctx = canvas.getContext('2d');
 
-const renderLoop = () => {
-    universe.tick();
-
-    drawGrid();
-    drawCells();
-
-    requestAnimationFrame(renderLoop);
-};
-
-const drawGrid = () => {
+function drawEmptyBoard() {
     ctx.beginPath();
     ctx.strokeStyle = GRID_COLOR;
 
+    board.set(1, 2, Square.P1)
+    board.set(4, 1, Square.P2)
+
     // Vertical lines.
-    for (let i = 0; i <= width; i++) {
-        ctx.moveTo(i * (CELL_SIZE + 1) + 1, 0);
-        ctx.lineTo(i * (CELL_SIZE + 1) + 1, (CELL_SIZE + 1) * height + 1);
+    for (let i = 0; i <= BOARD_WIDTH; i++) {
+        ctx.moveTo(i * SQUARE_SIZE, 0)
+        ctx.lineTo(i * SQUARE_SIZE, SQUARE_SIZE * BOARD_HEIGHT)
     }
 
     // Horizontal lines.
-    for (let j = 0; j <= height; j++) {
-        ctx.moveTo(0, j * (CELL_SIZE + 1) + 1);
-        ctx.lineTo((CELL_SIZE + 1) * width + 1, j * (CELL_SIZE + 1) + 1);
+    for (let i = 0; i <= BOARD_HEIGHT; i++) {
+        ctx.moveTo(0, i * SQUARE_SIZE)
+        ctx.lineTo(BOARD_WIDTH * SQUARE_SIZE, i * SQUARE_SIZE)
     }
-
     ctx.stroke();
-};
+}
 
-const getIndex = (row, column) => {
-    return row * width + column;
-};
+function drawPieces() {
+    let squaresPtr = board.squares();
+    let squares = new Uint8Array(memory.buffer, squaresPtr, BOARD_WIDTH * BOARD_HEIGHT);
 
-const drawCells = () => {
-    const cellsPtr = universe.cells();
-    const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
+    for (let i = 0; i < BOARD_WIDTH; i++) {
+        for (let j = 0; j < BOARD_HEIGHT; j++) {
+            let index = j * BOARD_WIDTH + i
 
-    ctx.beginPath();
-
-    for (let row = 0; row < height; row++) {
-        for (let col = 0; col < width; col++) {
-            const idx = getIndex(row, col);
-
-            ctx.fillStyle = cells[idx] === Cell.Dead
-                ? DEAD_COLOR
-                : ALIVE_COLOR;
-
-            ctx.fillRect(
-                col * (CELL_SIZE + 1) + 1,
-                row * (CELL_SIZE + 1) + 1,
-                CELL_SIZE,
-                CELL_SIZE
-            );
+            if (squares[index] === Square.P1) {
+                drawSinglePiece(i, j, P1_COLOR)
+            } else if (squares[index] === Square.P2) {
+                drawSinglePiece(i, j, P2_COLOR)
+            }
         }
     }
+}
 
-    ctx.stroke();
-};
+function drawSinglePiece(i, j, color) {
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    const xOffset = (i + 0.5) * SQUARE_SIZE
+    const yOffset = (j + 0.5) * SQUARE_SIZE
+    ctx.moveTo(xOffset, yOffset)
+    ctx.arc(xOffset,
+        yOffset,
+        PIECE_RADIUS,
+        0,
+        2 * Math.PI);
+    ctx.fill();
+}
 
-drawGrid();
-drawCells();
-requestAnimationFrame(renderLoop);
+drawEmptyBoard()
+drawPieces()
+
+// const renderLoop = () => {
+//     universe.tick();
+
+//     drawGrid();
+//     drawCells();
+
+//     requestAnimationFrame(renderLoop);
+// };
+
+// drawGrid();
+// drawCells();
+// requestAnimationFrame(renderLoop);
