@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 use crate::log;
 
 mod board;
+mod ai;
 
 const WIN_LENGTH: usize = 4;
 
