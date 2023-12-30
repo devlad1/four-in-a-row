@@ -18,6 +18,8 @@ boardCanvas.width = (SQUARE_SIZE + 1) * BOARD_WIDTH + 1;
 boardCanvas.height = (SQUARE_SIZE + 1) * BOARD_HEIGHT + 1;
 const boardCtx = boardCanvas.getContext('2d');
 
+const gameStatePre = document.getElementById("game-state-pre");
+
 const elemLeft = boardCanvas.offsetLeft + boardCanvas.clientLeft
 const elemTop = boardCanvas.offsetTop + boardCanvas.clientTop
 
@@ -32,6 +34,8 @@ boardCanvas.addEventListener('click', function(event) {
         game.make_move(x)
         draw()
     }
+
+    updateGameStateText()
 
     if (!game.is_human_move()) {
         // wait for ai move
@@ -115,4 +119,14 @@ function draw() {
     drawPieces()
 }
 
+function updateGameStateText() {
+    if (game.is_game_over()) {
+        gameStatePre.textContent = `Game Over!\nPlayer ${game.current_player()} won`
+    } else {
+        gameStatePre.textContent = `Player ${game.current_player()} turn`
+    }
+    
+}
+
 draw()
+updateGameStateText()

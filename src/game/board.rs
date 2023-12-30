@@ -6,7 +6,7 @@ pub const BOARD_HEIGHT: usize = 6;
 #[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SquareState {
+pub enum Square {
     Empty = 0,
     P1 = 1,
     P2 = 2,
@@ -16,13 +16,7 @@ pub enum SquareState {
 pub struct Board {
     width: usize,
     height: usize,
-    squares: Vec<SquareState>,
-}
-
-#[wasm_bindgen]
-pub struct Square {
-    x: usize,
-    y: usize,
+    squares: Vec<Square>,
 }
 
 #[wasm_bindgen]
@@ -30,7 +24,7 @@ impl Board {
     pub fn new() -> Board {
         let width = BOARD_WIDTH;
         let height = BOARD_HEIGHT;
-        let squares: Vec<SquareState> = vec![SquareState::Empty; width * height];
+        let squares: Vec<Square> = vec![Square::Empty; width * height];
 
         Board {
             width,
@@ -47,31 +41,37 @@ impl Board {
         self.height
     }
 
-    pub fn squares(&self) -> *const SquareState {
+    pub fn squares(&self) -> *const Square {
         self.squares.as_ptr()
     }
 
-    pub fn set(&mut self, i: usize, square: SquareState) -> Option<Square> {
-        if i > self.width || i <= 0  {
+    pub fn get_empty_y_coord(&self, x: usize) -> Option<usize> {
+        if x > self.width || x <= 0  {
             return None;
         }
 
-        let mut j = 1;
-        while self.squares[self.get_flat_index(i, j)] != SquareState::Empty {
-            j += 1;
+        let mut y = 1;
+        while self.squares[self.get_flat_index(x, y)] != Square::Empty {
+            y += 1;
 
-            if j > self.height {
-                return None
+            if y > self.height {
+                return None;
             }
+        }
+
+        Some(y)
+    }
+
+    pub fn set(&mut self, i: usize, j: usize, square: Square) {
+        if i > self.width || i <= 0 || j > self.height || j <= 0 {
+            return;
         }
 
         let index = self.get_flat_index(i, j);
         self.squares[index] = square;
-        
-        Some(Square { x: i, y: j })
     }
 
-    pub fn get(&self, i: usize, j: usize) -> SquareState {
+    pub fn get(&self, i: usize, j: usize) -> Square {
         let index = self.get_flat_index(i, j);
         self.squares.get(index).unwrap().clone()
     }
