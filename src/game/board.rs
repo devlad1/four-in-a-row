@@ -1,7 +1,12 @@
 use wasm_bindgen::prelude::*;
 
+#[allow(unused_imports)]
+use crate::log;
+
 pub const BOARD_WIDTH: usize = 7;
 pub const BOARD_HEIGHT: usize = 6;
+// pub const BOARD_WIDTH: usize = 2;
+// pub const BOARD_HEIGHT: usize = 2;
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -12,11 +17,19 @@ pub enum Square {
     P2 = 2,
 }
 
+impl Square {
+    pub fn is_empty(&self) -> bool {
+        self == &Square::Empty
+    }
+}
+
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct Board {
     width: usize,
     height: usize,
     squares: Vec<Square>,
+    num_pieces: usize,
 }
 
 #[wasm_bindgen]
@@ -30,6 +43,7 @@ impl Board {
             width,
             height,
             squares,
+            num_pieces: 0,
         }
     }
 
@@ -68,6 +82,13 @@ impl Board {
         }
 
         let index = self.get_flat_index(i, j);
+
+        if !square.is_empty() && self.squares[index].is_empty() {
+            self.num_pieces += 1;
+        } else if square.is_empty() && !self.squares[index].is_empty() {
+            self.num_pieces -= 1;
+        }
+
         self.squares[index] = square;
     }
 
@@ -78,5 +99,11 @@ impl Board {
 
     fn get_flat_index(&self, i: usize, j: usize) -> usize {
         (self.height - j as usize) * self.width + (i as usize - 1)
+    }
+}
+
+impl Board{
+    pub fn is_full(&self) -> bool {
+        self.num_pieces == self.width * self.height
     }
 }

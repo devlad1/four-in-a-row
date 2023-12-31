@@ -1,4 +1,5 @@
 extern crate web_sys;
+extern crate enum_map;
 
 mod game;
 

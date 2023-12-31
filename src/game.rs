@@ -1,25 +1,55 @@
+use enum_map::{enum_map, Enum, EnumMap};
 use wasm_bindgen::prelude::*;
 
-use crate::log;
+use crate::{game::ai::random::get_random_ai, log};
 
-mod board;
+use self::{board::Square, player::Player};
+
 mod ai;
+mod board;
+mod player;
 
 const WIN_LENGTH: usize = 4;
 
 #[wasm_bindgen]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum Turn {
     P1 = 1,
     P2 = 2,
+}
+
+impl Turn {
+    fn next(self) -> Turn {
+        match self {
+            Turn::P1 => Turn::P2,
+            Turn::P2 => Turn::P1,
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
+pub enum GameState {
+    Ongoing = 0,
+    Player1Won = 1,
+    Player2Won = 2,
+    Draw = 3,
+}
+
+impl GameState {
+    pub fn is_game_over(&self) -> bool {
+        self != &GameState::Ongoing
+    }
 }
 
 #[wasm_bindgen]
 pub struct Game {
     board: board::Board,
     curr_turn: Turn,
-    is_game_over: bool,
+    player_map: EnumMap<Turn, Player>,
+    game_state: GameState,
 }
 
 #[wasm_bindgen]
@@ -27,39 +57,49 @@ impl Game {
     pub fn new() -> Game {
         Game {
             board: board::Board::new(),
+            game_state: GameState::Ongoing,
             curr_turn: Turn::P1,
-            is_game_over: false,
+            player_map: enum_map! {
+                // Turn::P1 => Player::Computer(get_random_ai()),
+                Turn::P2 => Player::Computer(get_random_ai()),
+                Turn::P1 => Player::Human,
+                // Turn::P2 => Player::Human,
+            },
         }
     }
 
     pub fn make_move(&mut self, i: usize) {
-        if self.is_game_over {
-            return
+        if self.game_state.is_game_over() {
+            return;
         }
 
         let square_state = Game::turn_to_square(self.curr_turn);
         let y = self.board.get_empty_y_coord(i);
         match y {
             Some(j) => {
-                self.board.set(i, j, square_state);
-
-                if self.check_game_over(i, j) {
-                    log!("Game over");
-                    self.is_game_over = true;
-                }
-
-                if self.curr_turn == Turn::P1 {
-                    self.curr_turn = Turn::P2
-                } else {
-                    self.curr_turn = Turn::P1
-                }
+                self.place_piece(i, j, square_state);
             }
             None => {}
         }
     }
 
+    pub fn make_computer_move(&mut self) {
+        if let Player::Computer(ai) = &self.player_map[self.curr_turn] {
+            if self.game_state.is_game_over() {
+                return;
+            }
+
+            let x = self.get_computer_move(ai);
+            let y = self.board.get_empty_y_coord(x).unwrap();
+            self.place_piece(x, y, Game::turn_to_square(self.curr_turn));
+        } else {
+            log!("Tried making a computer move but it wasn't a computer player");
+            panic!("Illegal state");
+        }
+    }
+
     pub fn is_human_move(&self) -> bool {
-        true
+        self.player_map[self.curr_turn].is_human()
     }
 
     pub fn board_width(&self) -> usize {
@@ -74,24 +114,62 @@ impl Game {
         self.board.squares()
     }
 
-    pub fn is_game_over(&self) -> bool {
-        self.is_game_over
+    pub fn game_state(&self) -> GameState {
+        self.game_state
     }
 
     pub fn current_player(&self) -> Turn {
         self.curr_turn
     }
 
-    fn check_game_over(&self, last_move_x: usize, last_move_y: usize) -> bool {
+    fn place_piece(&mut self, i: usize, j: usize, square_state: Square) {
+        self.board.set(i, j, square_state);
+
+        let game_state = self.check_game_over(i, j);
+        if game_state.is_game_over() {
+            log!("Game over");
+            self.game_state = game_state;
+            return;
+        }
+
+        self.curr_turn = self.curr_turn.next();
+    }
+
+    fn get_computer_move(&self, ai: &ai::Ai) -> usize {
+        (ai.move_getter)(self)
+    }
+
+    fn check_game_over(&self, last_move_x: usize, last_move_y: usize) -> GameState {
         let last_square = self.board.get(last_move_x, last_move_y);
 
-        self.is_row_finished(last_move_x, last_move_y, last_square)
+        if self.is_row_finished(last_move_x, last_move_y, last_square)
             || self.is_column_finished(last_move_x, last_move_y, last_square)
             || self.is_up_right_diagonal_finished(last_move_x, last_move_y, last_square)
             || self.is_down_right_diagonal_finished(last_move_x, last_move_y, last_square)
+        {
+            match last_square {
+                Square::P1 => return GameState::Player1Won,
+                Square::P2 => return GameState::Player2Won,
+                _ => {
+                    log!("got {:?} square when game ended", last_square);
+                    panic!("Illegal state")
+                }
+            }
+        }
+
+        if self.board.is_full() {
+            return GameState::Draw;
+        }
+
+        GameState::Ongoing
     }
 
-    fn is_row_finished(&self, last_move_x: usize, last_move_y: usize, last_square: board::Square) -> bool {
+    fn is_row_finished(
+        &self,
+        last_move_x: usize,
+        last_move_y: usize,
+        last_square: board::Square,
+    ) -> bool {
         let mut streak = 1;
         for i in 1..WIN_LENGTH {
             let x = last_move_x + i;
@@ -124,7 +202,12 @@ impl Game {
         streak >= WIN_LENGTH
     }
 
-    fn is_column_finished(&self, last_move_x: usize, last_move_y: usize, last_square: board::Square) -> bool {
+    fn is_column_finished(
+        &self,
+        last_move_x: usize,
+        last_move_y: usize,
+        last_square: board::Square,
+    ) -> bool {
         let mut streak = 1;
         for i in 1..WIN_LENGTH {
             let y = last_move_y + i;
@@ -157,7 +240,12 @@ impl Game {
         streak >= WIN_LENGTH
     }
 
-    fn is_up_right_diagonal_finished(&self, last_move_x: usize, last_move_y: usize, last_square: board::Square) -> bool {
+    fn is_up_right_diagonal_finished(
+        &self,
+        last_move_x: usize,
+        last_move_y: usize,
+        last_square: board::Square,
+    ) -> bool {
         let mut streak = 1;
         for i in 1..WIN_LENGTH {
             let x = last_move_x + i;
@@ -192,7 +280,12 @@ impl Game {
         streak >= WIN_LENGTH
     }
 
-    fn is_down_right_diagonal_finished(&self, last_move_x: usize, last_move_y: usize, last_square: board::Square) -> bool {
+    fn is_down_right_diagonal_finished(
+        &self,
+        last_move_x: usize,
+        last_move_y: usize,
+        last_square: board::Square,
+    ) -> bool {
         let mut streak = 1;
         for i in 1..WIN_LENGTH {
             let x = last_move_x - i;

@@ -1,7 +1,7 @@
-import { Game, Board, Square } from "four-in-a-row";
+import { Game, Square } from "four-in-a-row";
 import { memory } from "four-in-a-row/four_in_a_row_bg";
 
-const SQUARE_SIZE = 50; // px
+const SQUARE_SIZE = 70; // px
 const PIECE_RADIUS = SQUARE_SIZE / 2.3;
 
 const GRID_COLOR = "#bbbbbb";
@@ -27,25 +27,16 @@ function getBoardColumn(mouseEvent) {
     return Math.floor((mouseEvent.pageX - elemLeft) / SQUARE_SIZE) + 1;
 }
 
-boardCanvas.addEventListener('click', function(event) {
-    var x = getBoardColumn(event);
-
+boardCanvas.addEventListener('click', function (event) {
     if (game.is_human_move()) {
+        var x = getBoardColumn(event);
         game.make_move(x)
         draw()
     }
-
-    updateGameStateText()
-
-    if (!game.is_human_move()) {
-        // wait for ai move
-        // draw()
-    }
-
 }, false);
 
 let highlightedColumn = -1;
-boardCanvas.addEventListener('mousemove', function(event) {
+boardCanvas.addEventListener('mousemove', function (event) {
     var x = getBoardColumn(event) - 1;
 
     if (x < 0 || x >= BOARD_WIDTH) {
@@ -117,16 +108,35 @@ function draw() {
     drawHightlightedColumn()
     drawEmptyBoard()
     drawPieces()
+    updateGameStateText()
 }
 
 function updateGameStateText() {
-    if (game.is_game_over()) {
-        gameStatePre.textContent = `Game Over!\nPlayer ${game.current_player()} won`
-    } else {
-        gameStatePre.textContent = `Player ${game.current_player()} turn`
+    switch (game.game_state()) {
+        case 0:
+            return
+        case 1:
+        case 2:
+            gameStatePre.textContent = `Game Over!\nPlayer ${game.current_player()} won`
+            return
+        case 3:
+            gameStatePre.textContent = `Game Over!\nDraw`
+            return
+        default:
+            console.log(`Got illegal game state ${game.game_state()}`);
     }
-    
+}
+
+async function sleep(ms) {
+    await new Promise(r => setTimeout(r, ms));
 }
 
 draw()
-updateGameStateText()
+
+setInterval(function () {
+    if (!game.is_human_move()) {
+        sleep(200)
+        game.make_computer_move()
+        draw()
+    }
+}, 200);
