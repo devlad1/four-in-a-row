@@ -24,7 +24,7 @@ impl Square {
 }
 
 #[wasm_bindgen]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     width: usize,
     height: usize,
@@ -105,5 +105,9 @@ impl Board {
 impl Board{
     pub fn is_full(&self) -> bool {
         self.num_pieces == self.width * self.height
+    }
+
+    pub fn square_vec(&self) -> &Vec<Square> {
+        &self.squares
     }
 }

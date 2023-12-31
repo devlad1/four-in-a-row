@@ -1,7 +1,8 @@
 use enum_map::{enum_map, Enum, EnumMap};
 use wasm_bindgen::prelude::*;
 
-use crate::{game::ai::random::get_random_ai, log};
+#[allow(unused_imports)]
+use crate::{game::ai::random::get_random_ai, game::ai::alphabeta::get_alpha_beta, log};
 
 use self::{board::Square, player::Player};
 
@@ -9,7 +10,7 @@ mod ai;
 mod board;
 mod player;
 
-const WIN_LENGTH: usize = 4;
+pub const WIN_LENGTH: usize = 4;
 
 #[wasm_bindgen]
 #[repr(u8)]
@@ -45,6 +46,7 @@ impl GameState {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct Game {
     board: board::Board,
     curr_turn: Turn,
@@ -61,7 +63,7 @@ impl Game {
             curr_turn: Turn::P1,
             player_map: enum_map! {
                 // Turn::P1 => Player::Computer(get_random_ai()),
-                Turn::P2 => Player::Computer(get_random_ai()),
+                Turn::P2 => Player::Computer(get_alpha_beta()),
                 Turn::P1 => Player::Human,
                 // Turn::P2 => Player::Human,
             },
@@ -74,13 +76,7 @@ impl Game {
         }
 
         let square_state = Game::turn_to_square(self.curr_turn);
-        let y = self.board.get_empty_y_coord(i);
-        match y {
-            Some(j) => {
-                self.place_piece(i, j, square_state);
-            }
-            None => {}
-        }
+        self.make_move_from_x_coord(i, square_state);
     }
 
     pub fn make_computer_move(&mut self) {
@@ -89,9 +85,14 @@ impl Game {
                 return;
             }
 
-            let x = self.get_computer_move(ai);
+            log!("{:?}", self.clone().board);
+
+            let x = self.clone().get_computer_move(ai);
+            log!("{}", x);
             let y = self.board.get_empty_y_coord(x).unwrap();
+            log!("test2");
             self.place_piece(x, y, Game::turn_to_square(self.curr_turn));
+            log!("test3");
         } else {
             log!("Tried making a computer move but it wasn't a computer player");
             panic!("Illegal state");
@@ -135,10 +136,10 @@ impl Game {
         self.curr_turn = self.curr_turn.next();
     }
 
-    fn get_computer_move(&self, ai: &ai::Ai) -> usize {
+    fn get_computer_move(&mut self, ai: &ai::Ai) -> usize {
         (ai.move_getter)(self)
     }
-
+    
     fn check_game_over(&self, last_move_x: usize, last_move_y: usize) -> GameState {
         let last_square = self.board.get(last_move_x, last_move_y);
 
@@ -323,11 +324,23 @@ impl Game {
     fn is_legal_coord(&self, i: usize, j: usize) -> bool {
         i > 0 && j > 0 && i <= self.board_width() && j <= self.board_height()
     }
+}
 
-    fn turn_to_square(turn: Turn) -> board::Square {
+impl Game {
+    pub fn turn_to_square(turn: Turn) -> board::Square {
         match turn {
             Turn::P1 => board::Square::P1,
             Turn::P2 => board::Square::P2,
+        }
+    }
+
+    pub fn make_move_from_x_coord(&mut self, i: usize, square_state: Square) {
+        let y = self.board.get_empty_y_coord(i);
+        match y {
+            Some(j) => {
+                self.place_piece(i, j, square_state);
+            }
+            None => {}
         }
     }
 }

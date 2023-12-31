@@ -127,16 +127,21 @@ function updateGameStateText() {
     }
 }
 
-async function sleep(ms) {
-    await new Promise(r => setTimeout(r, ms));
-}
-
 draw()
 
-setInterval(function () {
+setInterval(() => {
     if (!game.is_human_move()) {
-        sleep(200)
+        console.log("asdasd")
         game.make_computer_move()
         draw()
     }
-}, 200);
+}, 2000)
+
+
+// setInterval(function () {
+//     if (!game.is_human_move()) {
+//         sleep(200)
+//         game.make_computer_move()
+//         draw()
+//     }
+// }, 2000000);

@@ -1,5 +1,6 @@
 use crate::game::ai::*;
 
+#[derive(Clone)]
 pub enum Player {
     Human,
     Computer(Ai),

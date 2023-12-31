@@ -1,11 +1,13 @@
 mod ai;
 
 pub mod random;
+pub mod alphabeta;
 
 use super::Game;
 
+#[derive(Clone)]
 pub struct Ai {
-    pub move_getter: fn(&Game) -> usize,
+    pub move_getter: fn(&mut Game) -> usize,
 }
 
 impl Ai {
