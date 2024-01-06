@@ -4,7 +4,6 @@ mod tests {
     use std::usize::MAX;
     use crate::game::ai::alphabeta::alphabeta_algorithm::{GameNode, get_best_move};
 
-
     #[derive(Debug, Clone)]
     struct Tree<S: Copy> {
         sons: Vec<Tree<S>>,

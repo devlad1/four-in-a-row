@@ -1,24 +1,17 @@
 /*
-function alphabeta(node, depth, α, β, maximizingPlayer) is
-    if depth == 0 or node is terminal then
-        return the heuristic value of node
-    if maximizingPlayer then
-        value := −∞
-        for each child of node do
-            value := max(value, alphabeta(child, depth − 1, α, β, FALSE))
-            if value > β then
-                break (* β cutoff *)
-            α := max(α, value)
-        return value
-    else
-        value := +∞
-        for each child of node do
-            value := min(value, alphabeta(child, depth − 1, α, β, TRUE))
-            if value < α then
-                break (* α cutoff *)
-            β := min(β, value)
-        return value
+function negamax(node, depth, α, β, color) is
+    if depth = 0 or node is a terminal node then
+        return color × the heuristic value of node
 
+    childNodes := generateMoves(node)
+    childNodes := orderMoves(childNodes)
+    value := −∞
+    foreach child in childNodes do
+        value := max(value, −negamax(child, depth − 1, −β, −α, −color))
+        α := max(α, value)
+        if α ≥ β then
+            break (* cut-off *)
+    return value
 */
 
 mod tests;
@@ -28,11 +21,17 @@ use std::{
     f64::{INFINITY, NEG_INFINITY},
 };
 
-use crate::lib::{max, min};
+#[allow(unused_imports)]
+use crate::{
+    lib::max,
+    log,
+};
 
-// type Move = usize;
-
-pub trait GameNode<Node, Move> where Node: GameNode<Node, Move>, Move: Copy {
+pub trait GameNode<Node, Move>
+where
+    Node: GameNode<Node, Move>,
+    Move: Copy,
+{
     // heuristic function to get evaluation of the current game state
     fn evaluate(&self) -> f64;
     // get all possible continuations of the current node
@@ -51,10 +50,16 @@ pub fn get_best_move<Node: GameNode<Node, Move>, Move: Copy>(
 
     let optional_move = children
         .iter()
-        .map(|(mv, game)| {
+        .map(|(mv, node)| {
             (
                 mv,
-                alphabeta(game.as_ref(), search_depth - 1, NEG_INFINITY, INFINITY, false),
+                -alphabeta(
+                    node.as_ref(),
+                    search_depth - 1,
+                    NEG_INFINITY,
+                    INFINITY,
+                    -1.,
+                ),
             )
         })
         .reduce(|(move1, eval1), (move2, eval2)| {
@@ -67,7 +72,7 @@ pub fn get_best_move<Node: GameNode<Node, Move>, Move: Copy>(
 
     match optional_move {
         Some(mv) => Some(*mv.0),
-        None => None,
+        None => panic!("Found no legal moves"),
     }
 }
 
@@ -75,53 +80,39 @@ fn alphabeta<Node: GameNode<Node, Move>, Move: Copy>(
     node: &(dyn GameNode<Node, Move>),
     depth: usize,
     mut alpha: f64,
-    mut beta: f64,
-    maximizing_player: bool,
+    beta: f64,
+    color: f64,
 ) -> f64 {
     if depth == 0 {
-        return node.evaluate();
+        let eval = node.evaluate() * color;
+        // log!("reached depth zero: {}", eval);
+        return eval;
     }
 
     let children_nodes = node.get_children_nodes();
     if children_nodes.is_empty() {
-        return node.evaluate();
+        let eval = node.evaluate() * color;
+        // log!("reached terminal node: {}", eval);
+        return eval;
     }
-    
+
     let children: Vec<&Box<Node>> = children_nodes.values().collect();
+    let mut value = f64::NEG_INFINITY;
+    for child in children.iter() {
+        let child_eval = -alphabeta(child.as_ref(), depth - 1, -beta, -alpha, -color);
+        println!("eval is {}", child_eval);
 
-    if maximizing_player {
-        let mut value: f64 = f64::NEG_INFINITY;
+        value = max(
+            value,
+            child_eval,
+        );
 
-        for child in children.iter() {
-            value = max(
-                value,
-                alphabeta(child.as_ref(), depth - 1, alpha, beta, false),
-            );
+        alpha = max(alpha, value);
 
-            if value > beta {
-                break;
-            }
-
-            alpha = max(alpha, value)
+        if alpha >= beta {
+            break;
         }
-
-        return value;
-    } else {
-        let mut value: f64 = f64::INFINITY;
-
-        for child in children.iter() {
-            value = min(
-                value,
-                alphabeta(child.as_ref(), depth - 1, alpha, beta, true),
-            );
-
-            if value < alpha {
-                break;
-            }
-
-            beta = min(beta, value)
-        }
-
-        return value;
     }
+
+    value
 }

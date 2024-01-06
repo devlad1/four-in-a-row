@@ -5,6 +5,9 @@ use std::{
 
 use crate::game::{board::Square, Game, GameState, Turn};
 
+#[allow(unused_imports)]
+use crate::log;
+
 use self::alphabeta_algorithm::GameNode;
 
 use super::Ai;
@@ -31,7 +34,7 @@ impl GameNode<Game, usize> for Game {
                 }
             }
         }
-        
+
         let player_square: Square = Game::turn_to_square(self.curr_turn);
         let mut score: f64 = 0.;
 
@@ -82,13 +85,15 @@ impl Game {
 
     fn get_available_moves(&self) -> Vec<usize> {
         let mut available_moves: Vec<usize> = vec![];
-
-        for i in 1..=self.board_width() {
-            if self.is_a_valid_move(i) {
-                available_moves.push(i)
+        if !self.game_state.is_game_over() {
+            for i in 1..=self.board_width() {
+                if self.is_a_valid_move(i) {
+                    available_moves.push(i)
+                }
             }
         }
 
+        log!("available moves: {:?}", available_moves);
         available_moves
     }
 }
@@ -96,6 +101,6 @@ impl Game {
 #[allow(unused)]
 pub fn get_alphabeta_ai() -> Ai {
     Ai {
-        move_getter: |game: &Game| alphabeta_algorithm::get_best_move(game, 20).unwrap(),
+        move_getter: |game: &Game| alphabeta_algorithm::get_best_move(game, 5).unwrap(),
     }
 }
