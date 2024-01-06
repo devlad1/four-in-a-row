@@ -7,7 +7,7 @@ use super::Game;
 
 #[derive(Clone)]
 pub struct Ai {
-    pub move_getter: fn(&mut Game) -> usize,
+    pub move_getter: fn(&Game) -> usize,
 }
 
 impl Ai {

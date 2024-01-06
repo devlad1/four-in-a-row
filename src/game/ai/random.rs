@@ -9,7 +9,7 @@ use super::Ai;
 #[allow(unused)]
 pub fn get_random_ai() -> Ai {
     Ai {
-        move_getter: |game: &mut Game| {
+        move_getter: |game: &Game| {
             let mut i = floor((random() * (game.board_width() as f64)) + 1.0) as usize;
             while !Ai::is_legal(game, i) {
                 i = floor((random() * (game.board_width() as f64)) + 1.0) as usize;

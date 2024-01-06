@@ -1,31 +1,39 @@
-use crate::{game::{self, board::Square, Game}, log};
+use std::{
+    collections::HashMap,
+    f64::{INFINITY, NEG_INFINITY},
+};
+
+use crate::game::{board::Square, Game, GameState, Turn};
+
+use self::alphabeta_algorithm::GameNode;
 
 use super::Ai;
 
-use minimax_alpha_beta::strategy::{game_strategy::GameStrategy, alpha_beta_minimax::AlphaBetaMiniMaxStrategy};
+mod alphabeta_algorithm;
 
-type ConnectFourMove = usize;
-
-impl GameStrategy for Game {
-    type Player = game::Turn;
-    type Move = ConnectFourMove;
-    type Board = game::board::Board;
-
+impl GameNode<Game, usize> for Game {
     fn evaluate(&self) -> f64 {
-        log!("test evaluate");
-
-        if self.is_game_tied() {
-            return 0.
-        } else if let Some(player) = self.get_winner() {
-            if player == self.curr_turn {
-                return f64::INFINITY
-            } else {
-                return f64::NEG_INFINITY
+        match self.game_state {
+            GameState::Ongoing => (),
+            GameState::Draw => return 0.,
+            GameState::Player1Won => {
+                if self.curr_turn == Turn::P1 {
+                    return INFINITY;
+                } else {
+                    return NEG_INFINITY;
+                }
+            }
+            GameState::Player2Won => {
+                if self.curr_turn == Turn::P2 {
+                    return INFINITY;
+                } else {
+                    return NEG_INFINITY;
+                }
             }
         }
-
+        
         let player_square: Square = Game::turn_to_square(self.curr_turn);
-        let mut score: f64 = 0.0;
+        let mut score: f64 = 0.;
 
         for i in 0..self.board_width() {
             for j in 0..self.board_height() {
@@ -34,10 +42,10 @@ impl GameStrategy for Game {
                         let x_index = i as i32 + k;
                         let y_index = j as i32 + n;
 
-                        if x_index < 0
-                            || x_index >= (self.board_width() as i32)
-                            || y_index < 0
-                            || y_index >= (self.board_height() as i32)
+                        if x_index < 1
+                            || x_index > (self.board_width() as i32)
+                            || y_index < 1
+                            || y_index > (self.board_height() as i32)
                         {
                             continue;
                         }
@@ -49,83 +57,45 @@ impl GameStrategy for Game {
                 }
             }
         }
-
-        log!("test evaluate");
-
         score
     }
 
-    fn get_winner(&self) -> Option<Self::Player> {
-        match self.game_state {
-            game::GameState::Ongoing => None,
-            game::GameState::Player1Won => Some(game::Turn::P1),
-            game::GameState::Player2Won => Some(game::Turn::P2),
-            game::GameState::Draw => None,
-        }
+    fn get_children_nodes(&self) -> HashMap<usize, Box<Game>> {
+        let mut cloned_games_map: HashMap<usize, Box<Game>> = self
+            .get_available_moves()
+            .iter()
+            .map(|mv| (*mv, Box::new(self.clone())))
+            .collect();
+
+        cloned_games_map
+            .iter_mut()
+            .for_each(|(mv, game)| game.make_move(*mv));
+
+        cloned_games_map
+    }
+}
+
+impl Game {
+    fn is_a_valid_move(&self, mv: usize) -> bool {
+        self.board.get(mv, self.board_height()) == Square::Empty
     }
 
-    fn is_game_tied(&self) -> bool {
-        self.game_state == game::GameState::Draw
-    }
-
-    fn is_game_complete(&self) -> bool {
-        log!("Checking if game is complete, game state is {:?}", self.game_state);
-        log!("Returning {:?}", self.game_state != game::GameState::Ongoing);
-        self.game_state != game::GameState::Ongoing
-    }
-
-    fn get_available_moves(&self) -> Vec<Self::Move> {
-        log!("test get_available_moves");
-
-        let mut available_moves: Vec<Self::Move> = vec![];
+    fn get_available_moves(&self) -> Vec<usize> {
+        let mut available_moves: Vec<usize> = vec![];
 
         for i in 1..=self.board_width() {
-            if self.is_a_valid_move(&i) {
+            if self.is_a_valid_move(i) {
                 available_moves.push(i)
             }
         }
 
-        log!("test get_available_moves {:?}", available_moves);
-
         available_moves
-    }
-
-    fn play(&mut self, mv: &Self::Move, _maximizer: bool) {
-        log!("test play");
-        self.make_move_from_x_coord(*mv, Game::turn_to_square(self.curr_turn));
-        log!("test play");
-    }
-
-    fn clear(&mut self, mv: &Self::Move) {
-        for y in 2..=self.board_height() {
-            if self.board.get(*mv, y).is_empty() {
-                self.board.set(*mv, y, Square::Empty);
-                return;
-            }
-        }
-
-        self.board.set(*mv, self.board_height(), Square::Empty);
-    }
-
-    fn get_board(&self) -> &Self::Board {
-        &self.board
-    }
-
-    fn is_a_valid_move(&self, mv: &Self::Move) -> bool {
-        log!("test is_a_valid_name {} {}", *mv, self.board_height());
-        let a = self.board.get(*mv, self.board_height()) == Square::Empty;
-        log!("test is_a_valid_name, {:?}", a);
-
-        self.board.get(*mv, self.board_height()) == Square::Empty
-    }
-
-    fn get_a_sentinel_move(&self) -> Self::Move {
-        self.board_width() + 1
     }
 }
 
-pub fn get_alpha_beta() -> Ai {
+#[allow(unused)]
+pub fn get_alphabeta_ai() -> Ai {
     Ai {
-        move_getter: |game: &mut Game| game.get_best_move(30, true),
+        move_getter: |game: &Game| alphabeta_algorithm::get_best_move(game, 20).unwrap(),
     }
 }

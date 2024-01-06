@@ -10,5 +10,21 @@ mod lib {
             web_sys::console::log_1(&format!( $( $t )* ).into());
         }
     }
+
+    pub fn max<T: PartialOrd>(a: T, b: T) -> T {
+        if a > b {
+            a
+        } else { 
+            b
+        }
+    }
+
+    pub fn min<T: PartialOrd>(a: T, b: T) -> T {
+        if a < b {
+            a
+        } else { 
+            b
+        }
+    }
 }
 

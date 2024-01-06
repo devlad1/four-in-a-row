@@ -131,11 +131,10 @@ draw()
 
 setInterval(() => {
     if (!game.is_human_move()) {
-        console.log("asdasd")
         game.make_computer_move()
         draw()
     }
-}, 2000)
+}, 1000)
 
 
 // setInterval(function () {

@@ -1,8 +1,9 @@
 use enum_map::{enum_map, Enum, EnumMap};
 use wasm_bindgen::prelude::*;
 
+use crate::game::ai::alphabeta::get_alphabeta_ai;
 #[allow(unused_imports)]
-use crate::{game::ai::random::get_random_ai, game::ai::alphabeta::get_alpha_beta, log};
+use crate::{game::ai::random::get_random_ai, log};
 
 use self::{board::Square, player::Player};
 
@@ -63,7 +64,7 @@ impl Game {
             curr_turn: Turn::P1,
             player_map: enum_map! {
                 // Turn::P1 => Player::Computer(get_random_ai()),
-                Turn::P2 => Player::Computer(get_alpha_beta()),
+                Turn::P2 => Player::Computer(get_alphabeta_ai()),
                 Turn::P1 => Player::Human,
                 // Turn::P2 => Player::Human,
             },
@@ -136,7 +137,7 @@ impl Game {
         self.curr_turn = self.curr_turn.next();
     }
 
-    fn get_computer_move(&mut self, ai: &ai::Ai) -> usize {
+    fn get_computer_move(&self, ai: &ai::Ai) -> usize {
         (ai.move_getter)(self)
     }
     
